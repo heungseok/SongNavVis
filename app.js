@@ -31,6 +31,10 @@ app.get('/', function (req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
+app.get('/index_bufferGeo.html', function (req, res) {
+    res.sendFile(__dirname + '/index_bufferGeo.html');
+});
+
 app.get('/form_receiver', function (req, res) {
     var query1 = req.query.query1;
     var query2 = req.query.query2;

@@ -32,6 +32,8 @@
         /*position: absolute;*/
         /*top: 7%;*/
         /*z-index: 1000;*/
+
+
     /*}*/
 
 
@@ -148,10 +150,6 @@
 
         <script src="lib/stats.min.js"></script>
 
-        <script src="lib/Tween.js"></script>
-        <script src="lib/TweenMax.js"></script>
-        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>-->
-
         <script type="x-shader/x-vertex" id="vertexshader">
 
 			attribute float size;
@@ -256,23 +254,16 @@
 
             var container, stats;
             var camera, scene, renderer, controls;
-            var points, colors = []
-            var sprite, indices = [], sizes = [];
+            var points;
 
             var renderer, scene, camera, stats;
 
             var uniforms, PARTICLE_SIZE = 10000;
             var raycaster, intersects;
             var mouse, INTERSECTED;
-            var cameraToOrigin = false, cameraToTarget = false;
-            var cameraAdjust = false;
 
-
-            var targetPosition = {
-                x: 0,
-                y: 0,
-                z: 0
-            };
+            // projector
+            var projector = new THREE.Projector();
 
             init();
             animate();
@@ -288,13 +279,8 @@
                 //        camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 0.1, 200000 );
                 //        camera.position.z = 2750;
 
-                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 20000 );
+                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 200000 );
                 camera.position.z = 500;
-
-
-                posX = camera.position.x - 100;
-                posY = camera.position.y - 100;
-                posZ = camera.position.z - 100;
 
 
                 controls = new THREE.TrackballControls(camera);
@@ -302,7 +288,7 @@
                 controls.zoomSpeed = 1.2;
                 controls.panSpeed = 0.5;
 
-//                controls.noZoom = false;
+                controls.noZoom = false;
                 controls.noPan = false;
 
 
@@ -316,66 +302,106 @@
 
 
                 scene = new THREE.Scene();
-                scene.fog = new THREE.Fog( 0x050505, 1000, 50000 );
+                scene.fog = new THREE.Fog( 0x050505, 2000, 3500 );
                 scene.add( new THREE.AmbientLight( 0x444444 ) );
 
 
-                var light1 = new THREE.DirectionalLight( 0xffffff, 1 );
+                var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
                 light1.position.set( 1, 1, 1 );
                 scene.add( light1 );
 
-//                sprite = new THREE.TextureLoader().load("img/ball.png");
-                sprite = new THREE.TextureLoader().load("img/sprite.png");
-                geometry = new THREE.Geometry();
+
+                var color = new THREE.Color();
+
+                var positions = new Float32Array(PARTICLE_SIZE * 3);
+                var colors = new Float32Array(PARTICLE_SIZE * 3);
+                var sizes = new Float32Array(PARTICLE_SIZE);
+                var indices = new Uint32Array(PARTICLE_SIZE);
+                var names = [];
 
 
 
-                for( var i=0; i<PARTICLE_SIZE; i++){
+                for (var i =0; i< PARTICLE_SIZE; i+=3){
+                    var x = Math.random() * 500 - 250;
+                    var y = Math.random() * 500 - 250;
+                    var z = Math.random() * 500 - 250;
 
-                    var vertex = new THREE.Vector3();
-                    vertex.x = 2000* Math.random() - 1000;
-                    vertex.y = 2000* Math.random() - 1000;
-                    vertex.z = 2000* Math.random() - 1000;
 
-                    geometry.vertices.push(vertex);
+                    positions[i] = x;
+                    positions[i+1] = y;
+                    positions[i+2] = z;
 
-                    colors[i] = new THREE.Color( 0xffffff );
-                    colors[i].setHSL( (vertex.x + 1000) / 2000,10, 0.5);
 
-                    indices[i] = "Heungseok Park";
+                    // random color : i, i+1, i+2 are RGB respectively
+//                    color.setHSL( 0.01 + 100 * ( i / PARTICLE_SIZE ), 10, 0.5 );
+//                    colors[i] = color.setHSL( (vertex.x + 500)/1000, 10, 0.5)
 
+                    color.setHSL( Math.random() * 360 , 1, 0.2 );
+                    color.toArray(colors, i);
+                    color.setHSL( Math.random() * 360 , 1, 0.2 );
+                    color.toArray(colors, i+1);
+                    color.setHSL( Math.random() * 360 , 1, 0.2 );
+                    color.toArray(colors, i+2);
+
+
+                    sizes[i] = 30;
+                    sizes[i+1] = 30;
+                    sizes[i+2] = 30;
+
+                    indices[i] = i;
+                    indices[i+1] = i+2;
+                    indices[i+2] = i+3;
+
+                    names[i] = "heungseok"
+                    names[i+1] = "heungseok"
+                    names[i+2] = "heungseok"
 
                 }
-                geometry.colors = colors;
-                geometry.indices = indices;
-                console.log(geometry);
 
-                material = new THREE.PointsMaterial( {
-                    size: 50,
-                    map: sprite,
-                    vertexColors: THREE.VertexColors,
-                    alphaTest: 0.5,
-                    transparent: true
-                });
-                material.color.setHSL (1.0, 0.2, 12);
 
-                points = new THREE.Points(geometry, material);
-                scene.add(points);
+                var geometry = new THREE.BufferGeometry();
+                geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+                geometry.addAttribute( 'customColor', new THREE.BufferAttribute( colors, 3 ) );
+                geometry.addAttribute( 'size', new THREE.BufferAttribute( sizes, 1 ) );
+                geometry.addAttribute( 'id', new THREE.BufferAttribute(indices, 1));
+//                geometry.addAttribute( 'names', new THREE.BufferAttribute(names, 1));
+                geometry.names = names;
 
                 // why do this..?
                 geometry.computeBoundingSphere();
 
+                console.log(geometry);
+
+                //        var material = new THREE.PointsMaterial( { vertexColors: THREE.VertexColors } );
+
+                var material = new THREE.ShaderMaterial( {
+
+                    uniforms: {
+                        color:   { value: new THREE.Color( 0xffffff ) },
+                        texture: { value: new THREE.TextureLoader().load( "img/ball.png" ) }
+                    },
+                    vertexShader: document.getElementById( 'vertexshader' ).textContent,
+                    fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+
+                    alphaTest: 0.9
+
+                } );
+
+                points = new THREE.Points( geometry, material );
+                scene.add( points );
+
+                //
+
                 renderer = new THREE.WebGLRenderer( { antialias: false } );
+                        renderer.setClearColor( scene.fog.color );
                 renderer.setPixelRatio( window.devicePixelRatio );
                 renderer.setSize( window.innerWidth, window.innerHeight );
                 container.appendChild( renderer.domElement );
 
 
+
                 raycaster = new THREE.Raycaster();
                 mouse = new THREE.Vector2();
-
-
-
 
                 //        stats = new Stats();
                 //        container.appendChild( stats.dom );
@@ -394,7 +420,9 @@
                 searchBox.style.top = "5%";
                 searchBox.style.left = "5%";
 
+
                 searchBox.setAttribute("type", "text");
+
 
                 container.appendChild(searchBox);
             }
@@ -415,7 +443,7 @@
                 event.preventDefault();
 
                 var geometry = points.geometry;
-                var attributes = geometry;
+                var attributes = geometry.attributes;
 
                 mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
                 mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -425,34 +453,63 @@
                 intersects = raycaster.intersectObject( points );
                 if ( intersects.length > 0 ) {
 
-
                     INTERSECTED = intersects[ 0 ].index;
-                    console.log(attributes.vertices[ INTERSECTED ]);
-                    console.log(attributes.indices[ INTERSECTED ]);
+                    console.log(attributes.id.array[ INTERSECTED ]);
 
-                    var to = attributes.vertices[ INTERSECTED ]
+                    var to = new THREE.Vector3(attributes.position.array[INTERSECTED],
+                                                attributes.position.array[INTERSECTED + 1],
+                                                attributes.position.array[INTERSECTED + 2]);
+                    console.log(to);
+//                    flyTo(camera, to, 50);
+
+                    attributes.size.array[ INTERSECTED ] = 40 * 1.25;
+                    attributes.size.needsUpdate = true;
+
+                    console.log(geometry.names[INTERSECTED])
 
 
-                    targetPosition.x = Math.round(to.x);
-                    targetPosition.y = Math.round(to.y);
-                    targetPosition.z = Math.round(to.z);
-
-                    cameraToOrigin = true;
-
-//                    flyToOrigin();
-                    flyToTarget()
-
-                    var sphere_geometry = new THREE.SphereGeometry(30, 32, 32);
+                    var sphere_geometry = new THREE.SphereGeometry();
                     var sphere_material = new THREE.MeshNormalMaterial();
                     sphere = new THREE.Mesh( sphere_geometry, sphere_material);
 
                     sphere.position.set(to.x,to.y,to.z);
+
                     scene.add(sphere);
 
 
                 }
             }
 
+            function onDocumentMouseClick3D(event) {
+
+                event.preventDefault();
+
+                var geometry = points.geometry;
+                var attributes = geometry.attributes;
+
+                var mouse3D = new THREE.Vector3( ( event.clientX / window.innerWidth ) * 2 - 1,     // x
+                                                - ( event.clientY / window.innerHeight ) * 2 + 1,   // y
+                                                    0.5 );                                          // z
+
+                raycaster.setFromCamera( mouse3D.clone(), camera );
+                intersects = raycaster.intersectObject( points );
+
+                if ( intersects.length > 0 ) {
+
+                    INTERSECTED = intersects[ 0 ].index;
+                    console.log(attributes.id.array[ INTERSECTED ]);
+
+                    var to = new THREE.Vector3(attributes.position.array[INTERSECTED],
+                        attributes.position.array[INTERSECTED + 1],
+                        attributes.position.array[INTERSECTED + 2]);
+                    console.log(to);
+                    flyTo(camera, to, 100);
+
+                    attributes.size.array[ INTERSECTED ] = 30 * 1.25;
+                    attributes.size.needsUpdate = true;
+
+                }
+            }
 
 
             function onWindowResize() {
@@ -469,13 +526,10 @@
 
             function animate() {
 
-                console.log(camera.zoom);
                 requestAnimationFrame( animate );
-                TWEEN.update();
-
                 controls.update();
                 render();
-
+                //        stats.update();
 
             }
 
@@ -483,101 +537,39 @@
 
 
                 // rotate points entirely
-//                var time = Date.now() * 0.001;
+                //        var time = Date.now() * 0.001;
+                //
+                //        points.rotation.x = time * 0.25;
+                //        points.rotation.y = time * 0.5;
+                var geometry = points.geometry;
+                var attributes = geometry.attributes;
 
-//                points.rotation.x = time * 0.25;
-//                points.rotation.y = time * 0.5;
+                raycaster.setFromCamera( mouse, camera );
+
+                intersects = raycaster.intersectObject( points );
+
+                if ( intersects.length > 0 ) {
+
+                    if ( INTERSECTED != intersects[ 0 ].index ) {
+                        // initial size is 15
+                        attributes.size.array[ INTERSECTED ] = 30;
+
+                        INTERSECTED = intersects[ 0 ].index;
+
+                        attributes.size.array[ INTERSECTED ] = 40 * 1.25;
+                        attributes.size.needsUpdate = true;
+
+                    }
+
+                } else if ( INTERSECTED !== null ) {
+
+                    attributes.size.array[ INTERSECTED ] = 30;
+                    attributes.size.needsUpdate = true;
+                    INTERSECTED = null;
+
+                }
 
                 renderer.render( scene, camera );
-/*
-                if(cameraAdjust){
-                    console.log("adjusting camera!")
-                    cameraAdjustFunc();
-                }
-*/
-            }
-
-            function cameraAdjustFunc() {
-
-                var zoom = {
-                    value: camera.zoom  // from current zoom
-                };
-                console.log(camera.zoom);
-
-                var zoomEnd = {
-                    value: 0.1 // to the zoom of 1
-                };
-
-                var tween = new TWEEN.Tween(zoom).to(zoomEnd, 500); // duration of tweening is 0.5 second
-                tween.onUpdate(function () {
-                    camera.zoom = zoom.value;
-                })
-                .onComplete(function () {
-                    cameraAdjust = false;
-                })
-                .start();
-
-
-            }
-
-            function flyToOrigin(){
-
-                var from = {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z
-                };
-
-                var to = {
-                    x: 0,
-                    y: 0,
-                    z: 2000
-                };
-
-
-                var tween = new TWEEN.Tween(from)
-                    .to(to, 600)
-                    .easing(TWEEN.Easing.Linear.None)
-                    .onUpdate(function () {
-                        camera.position.set(this.x, this.y, this.z);
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                    })
-                    .onComplete(function () {
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                        flyToTarget();
-                        console.log(camera.position);
-                    })
-                    .start();
-
-            }
-
-            function flyToTarget(){
-
-                var from = {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z
-                };
-
-                var to = {
-                    x: targetPosition.x,
-                    y: targetPosition.y,
-                    z: targetPosition.z
-                };
-                var tween = new TWEEN.Tween(from)
-                    .to(to, 600)
-                    .easing(TWEEN.Easing.Linear.None)
-                    .onUpdate(function () {
-                        camera.position.set(this.x, this.y, this.z);
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                    })
-                    .onComplete(function () {
-                        cameraAdjust = true;
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                        console.log(camera.position);
-
-                    })
-                    .start();
 
             }
             
@@ -616,7 +608,6 @@
                     z: r * Math.cos(teta) + to.z
                 };
             }
-
 
 
         </script>
