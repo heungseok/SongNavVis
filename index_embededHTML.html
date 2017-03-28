@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+
+    <title>SongNav</title>
+</head>
+
+<style>
+    body{
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+
+    }
+
+    /*input.form-control{*/
+        /*position:absolute;*/
+        /*z-index: 1000;*/
+    /*}*/
+
+    /*.form-group{*/
+        /*position: absolute;*/
+        /*top: 7%;*/
+        /*z-index: 1000;*/
+    /*}*/
+
+
+    nav {
+        z-index: 1000000;
+    }
+    #container canvas{
+        font: 12px Arial;
+        color: white;
+
+        position: relative;
+        z-index: 1;
+    }
+
+
+
+
+    /* The Modal (background) */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        padding-top: 100px; /* Location of the box */
+        left: 0;
+        top: 4%;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+
+
+        transition: all 0.3s ease-out;
+    }
+
+    /* Modal Content */
+    .modal-content {
+        position: relative;
+        margin: auto;
+        padding: 0;
+        border: 1px solid transparent;
+        width: 50%;
+
+        background-color: #333; /* Black w/ opacfity */
+        opacity: .9;
+        box-shadow: 0 3px 40px 6px rgba(0,0,0,.4);
+        -webkit-animation-name: animatetop;
+        -webkit-animation-duration: 0.4s;
+        animation-name: animatetop;
+        animation-duration: 0.4s
+    }
+
+    /* Add Animation */
+    @-webkit-keyframes animatetop {
+        from {top:-300px; opacity:0}
+        to {top:0; opacity:1}
+    }
+
+    @keyframes animatetop {
+        from {top:-300px; opacity:0}
+        to {top:0; opacity:1}
+    }
+
+    /* The Close Button */
+    .close {
+        color: #ddd;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .modal-header {
+        padding: 2px 16px;
+        background-color: #333;
+        border: 1px solid transparent;
+        color: #ddd;
+    }
+
+    .modal-body {
+        padding: 2px 16px;
+        color: #ddd;
+        font-size: 15px;
+        font-weight: 400;
+        border: 1px solid transparent;
+    }
+
+    .modal-footer {
+        padding: 2px 16px;
+        background-color: #333;
+        border: 1px solid transparent;
+        color: #ddd;
+    }
+
+
+
+</style>
+<body>
+
+
+
+        <script src="lib/three.js"></script>
+
+        <script src="lib/Projector.js"></script>
+        <script src="lib/CanvasRenderer.js"></script>
+        <script src="lib/Detector.js"></script>
+        <script src="lib/TrackballControls.js"></script>
+        <script src="lib/OrbitControls.js"></script>
+
+        <script src="lib/stats.min.js"></script>
+
+        <script src="lib/Tween.js"></script>
+
+        <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>-->
+
+        <script type="x-shader/x-vertex" id="vertexshader">
+
+			attribute float size;
+			attribute vec3 customColor;
+
+			varying vec3 vColor;
+
+			void main() {
+
+				vColor = customColor;
+
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+
+				gl_PointSize = size * ( 300.0 / -mvPosition.z );
+
+				gl_Position = projectionMatrix * mvPosition;
+
+			}
+
+		</script>
+
+        <script type="x-shader/x-fragment" id="fragmentshader">
+
+			uniform vec3 color;
+			uniform sampler2D texture;
+
+			varying vec3 vColor;
+
+			void main() {
+
+				gl_FragColor = vec4( color * vColor, 1.0 );
+
+				gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+
+				if ( gl_FragColor.a < ALPHATEST ) discard;
+
+			}
+
+		</script>
+
+
+        <nav class="navbar navbar-inverse navbar-fixed-top" style="position: absolute; left:0; top:0">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="#">SongNav <small>- An Interactive visualization of Songs and Tags from xx</small></a>
+                </div>
+
+
+                <div id="navbar" class="navbar-collapse collapse">
+
+
+
+                    <ul class="nav navbar-nav navbar-left">
+
+                        <form class="navbar-form navbar-left" action="/" method="post" >
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Song or Tag" name="query1">
+                            </div>
+                            <!--<button type="submit" class="btn btn-default">Submit</button>-->
+
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Song or Tag" name="query2">
+                            </div>
+                            <button type="button" class="btn btn-default">Submit</button>
+
+                        </form>
+
+
+                        <li id="map_mode" class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+                                <span class="mode">Mode: </span><span data-bind="label" class="dropdown-label"> test </span>&nbsp;<span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu" role="menu">
+                                <li><a href="#" class="mode" data-mode="test1">test1</a></li>
+                                <li><a href="#" class="mode" data-mode="test2">test2</a></li>
+                                <li><a href="#" class="mode" data-mode="test3">test3</a></li>
+                                <li><a href="#" class="mode" data-mode="test4">test4</a></li>
+                                <li><a href="#" class="mode" data-mode="test5">test5</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+
+
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li id="about" class="active"><a href="#">About</a></li>
+
+                    </ul>
+
+                </div><!-- /.navbar-collapse -->
+            </div>
+
+
+        </nav>
+
+
+
+        <div id="container" style="width:100%; height:100%; ">
+        <script>
+
+            if (!Detector.webgl) Detector.addGetWebGLMessage();
+
+            var container, stats;
+            var camera, scene, renderer, controls;
+            var points, colors = []
+            var sprite, indices = [], sizes = [];
+
+            var renderer, scene, camera, stats;
+
+            var uniforms, PARTICLE_SIZE = 10000;
+            var raycaster, intersects;
+            var mouse, INTERSECTED;
+            var cameraToOrigin = false, cameraToTarget = false;
+            var cameraAdjust = false;
+
+
+            var targetPosition = {
+                x: 0,
+                y: 0,
+                z: 0
+            };
+
+            init();
+            animate();
+
+            function init() {
+
+                container = document.getElementById( 'container' );
+
+                // perspectiveCamera(fov: Camera frustum vertical field of view,
+                //                   aspect: Camera frustum aspect ratio
+                //                   near: Camera frustum near plane. (얼마나 가까이갈수있는지 == 깊게 들어가는지)
+                //                   far: Camera frustum far plane. (얼마나 멀리 당겨질수있는가)
+                //        camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 0.1, 200000 );
+                //        camera.position.z = 2750;
+
+                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 20000 );
+                camera.position.z = 500;
+
+
+                posX = camera.position.x - 100;
+                posY = camera.position.y - 100;
+                posZ = camera.position.z - 100;
+
+
+//                controls = new THREE.TrackballControls(camera);
+                controls = new THREE.OrbitControls(camera);
+                controls.rotateSpeed = 0.1;
+                controls.zoomSpeed = 0.5;
+                controls.panSpeed = 0.1;
+
+//                controls.noZoom = false;
+//                controls.noRotate = true;
+                controls.noPan = true;
+
+
+                // static moving => camera Accelerator; dynamicDampingFactor 0.9:slow, 0.1: fast
+                controls.staticMoving = false;
+                controls.dynamicDampingFactor = 0.2;
+
+                controls.keys = [ 65, 83, 68 ];
+
+                controls.addEventListener( 'change', render );
+
+
+                scene = new THREE.Scene();
+//                scene.fog = new THREE.Fog( 0x373737, 2000, 1000);
+//                scene.fog = new THREE.FogExp2( 0x050505, 0.0025 );
+                scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+
+                var light1 = new THREE.DirectionalLight( 0xffffff, 1 );
+                light1.position.set( 1, 1, 1 );
+                scene.add( light1 );
+
+//                sprite = new THREE.TextureLoader().load("img/ball.png");
+                sprite = new THREE.TextureLoader().load("img/sprite.png");
+                geometry = new THREE.Geometry();
+
+
+
+                for( var i=0; i<PARTICLE_SIZE; i++){
+
+                    var vertex = new THREE.Vector3();
+                    vertex.x = 2000* Math.random() - 1000;
+                    vertex.y = 2000* Math.random() - 1000;
+                    vertex.z = 2000* Math.random() - 1000;
+
+                    geometry.vertices.push(vertex);
+
+                    colors[i] = new THREE.Color( 0xffffff );
+                    colors[i].setHSL( (vertex.x + 1000) / 2000,10, 0.5);
+
+                    indices[i] = "Heungseok Park";
+
+
+                }
+                geometry.colors = colors;
+                geometry.indices = indices;
+                console.log(geometry);
+
+                material = new THREE.PointsMaterial( {
+                    size: 50,
+                    map: sprite,
+                    vertexColors: THREE.VertexColors,
+                    alphaTest: 0.5,
+                    transparent: true
+                });
+                material.color.setHSL (1.0, 0.2, 12);
+
+                points = new THREE.Points(geometry, material);
+
+
+                scene.add(points);
+
+                // why do this..?
+                geometry.computeBoundingSphere();
+
+                renderer = new THREE.WebGLRenderer( { antialias: false } );
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                container.appendChild( renderer.domElement );
+
+
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
+
+
+
+                //        stats = new Stats();
+                //        container.appendChild( stats.dom );
+
+                window.addEventListener( 'resize', onWindowResize, false );
+                document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+                document.addEventListener( 'click', onDocumentMouseClick, false)
+
+            }
+
+            function createSearchBox(){
+                searchBox = document.createElement('input');
+                searchBox.className = "form-control";
+                searchBox.style.position = "absolute";
+                searchBox.style.width = "100px"
+                searchBox.style.top = "5%";
+                searchBox.style.left = "5%";
+
+                searchBox.setAttribute("type", "text");
+
+                container.appendChild(searchBox);
+            }
+
+            function onDocumentMouseMove( event ) {
+
+                event.preventDefault();
+
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+//                onDocumentMouseDown(event);
+
+            }
+
+
+            function onDocumentMouseClick(event) {
+
+                event.preventDefault();
+
+                var geometry = points.geometry;
+                var attributes = geometry;
+
+                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+                raycaster.setFromCamera( mouse, camera );
+
+                intersects = raycaster.intersectObject( points );
+                if ( intersects.length > 0 ) {
+
+
+                    INTERSECTED = intersects[ 0 ].index;
+                    console.log(attributes.vertices[ INTERSECTED ]);
+                    console.log(attributes.indices[ INTERSECTED ]);
+
+                    var to = attributes.vertices[ INTERSECTED ]
+
+
+//                    targetPosition.x = Math.round(to.x);
+//                    targetPosition.y = Math.round(to.y);
+//                    targetPosition.z = Math.round(to.z);
+                    targetPosition.x = to.x;
+                    targetPosition.y = to.y;
+                    targetPosition.z = to.z;
+
+                    cameraToOrigin = true;
+
+//                    flyToOrigin();
+                    flyToTarget()
+
+                    var sphere_geometry = new THREE.SphereGeometry(30, 32, 32);
+                    var sphere_material = new THREE.MeshNormalMaterial();
+                    sphere = new THREE.Mesh( sphere_geometry, sphere_material);
+
+                    sphere.position.set(to.x,to.y,to.z);
+                    scene.add(sphere);
+
+
+                }
+            }
+
+
+
+            function onWindowResize() {
+
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+
+                renderer.setSize( window.innerWidth, window.innerHeight );
+
+//                controls.handleResize();
+
+
+            }
+
+            function animate() {
+
+
+                requestAnimationFrame( animate );
+                TWEEN.update();
+
+                controls.update();
+                render();
+
+//                console.log(scene.children[2].geometry.colorsNeedUpdate);
+
+
+
+
+            }
+
+            function render() {
+
+//                console.log(camera.position);
+                // rotate points entirely
+//                var time = Date.now() * 0.001;
+
+//                points.rotation.x = time * 0.25;
+//                points.rotation.y = time * 0.5;
+
+
+
+                renderer.render( scene, camera );
+/*
+                if(cameraAdjust){
+                    console.log("adjusting camera!")
+                    cameraAdjustFunc();
+                }
+*/
+            }
+
+            function cameraAdjustFunc() {
+
+                var zoom = {
+                    value: camera.zoom  // from current zoom
+                };
+                console.log(camera.zoom);
+
+                var zoomEnd = {
+                    value: 0.1 // to the zoom of 1
+                };
+
+                var tween = new TWEEN.Tween(zoom).to(zoomEnd, 500); // duration of tweening is 0.5 second
+                tween.onUpdate(function () {
+                    camera.zoom = zoom.value;
+                })
+                .onComplete(function () {
+                    cameraAdjust = false;
+                })
+                .start();
+
+
+            }
+
+            function flyToOrigin(){
+
+                var from = {
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z
+                };
+
+                var to = {
+                    x: 0,
+                    y: 0,
+                    z: 2000
+                };
+
+
+                var tween = new TWEEN.Tween(from)
+                    .to(to, 600)
+                    .easing(TWEEN.Easing.Linear.None)
+                    .onUpdate(function () {
+                        camera.position.set(this.x, this.y, this.z);
+                        camera.lookAt(new THREE.Vector3(0, 0, 0));
+                    })
+                    .onComplete(function () {
+                        camera.lookAt(new THREE.Vector3(0, 0, 0));
+                        flyToTarget();
+                        console.log(camera.position);
+                    })
+                    .start();
+
+            }
+
+            function flyToTarget(){
+
+                var from = {
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z
+                };
+
+                var to = {
+                    x: targetPosition.x,
+                    y: targetPosition.y,
+                    z: targetPosition.z
+                };
+                var tween = new TWEEN.Tween(from)
+                    .to(to, 600)
+                    .easing(TWEEN.Easing.Linear.None)
+                    .onUpdate(function () {
+                        camera.position.set(this.x, this.y, this.z);
+                        camera.lookAt(new THREE.Vector3(0, 0, 0));
+                    })
+                    .onComplete(function () {
+                        cameraAdjust = true;
+                        camera.lookAt(new THREE.Vector3(0, 0, 0));
+                        console.log(camera.position);
+
+                    })
+                    .start();
+
+
+
+            }
+            
+            function flyTo(camera, to, radius) {
+                var cameraOffset = radius / Math.tan(Math.PI / 180.0 * camera.fov * 0.5);
+
+                var from = {
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z
+                };
+
+                camera.lookAt(new THREE.Vector3(to.x, to.y, to.z));
+                var cameraEndPos = intersect(from, to, cameraOffset);
+                camera.position.x = cameraEndPos.x;
+                camera.position.y = cameraEndPos.y;
+                camera.position.z = cameraEndPos.z;
+                
+            }
+
+            function intersect(from, to, r) {
+                // we are using Cartesian to Spherical coordinates transformation to find
+                // theta and phi:
+                // https://en.wikipedia.org/wiki/Spherical_coordinate_system#Coordinate_system_conversions
+                var dx = from.x - to.x;
+                var dy = from.y - to.y;
+                var dz = from.z - to.z;
+                var r1 = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                var teta = Math.acos(dz / r1);
+                var phi = Math.atan2(dy, dx);
+
+                // And then based on sphere radius we transform back to Cartesian:
+                return {
+                    x: r * Math.sin(teta) * Math.cos(phi) + to.x,
+                    y: r * Math.sin(teta) * Math.sin(phi) + to.y,
+                    z: r * Math.cos(teta) + to.z
+                };
+            }
+
+
+
+        </script>
+
+    </div>
+
+
+        <!-- Modals -->
+        <div id="aboutModal" class="modal">
+            <!-- about Modal content -->
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span class="close">&times;</span>
+                    <h3>About</h3>
+                </div>
+                <div class="modal-body">
+                    <section>
+                        <h4>SongNav</h4>
+                        <p>This work represent public opinions from Korean Online Communities (KOC). The main visualization method is node-link diagram.
+                        </p>
+                        <p>Some other text ...</p>
+                    </section>
+
+                    <section>
+                        <h4>How to use</h4>
+                        <p>As this network visualization is built in 3D, you can zoom in and out the camera with the mouse wheel. You can also rotate the network
+                            by dragging the mouse.
+                        </p>
+                        <p>
+
+                        </p>
+                        <p>Some other text ...</p>
+                    </section>
+
+                    <section>
+                        <h4>Development</h4>
+                        <p>Powered by Three.js, and node.js</p>
+
+                    </section>
+
+                </div>
+                <div class="modal-footer">
+                    <!--<h5>Modal Footer</h5>-->
+                    <p>Developed by Heungseok Park (Visualization), Jongpil Lee (Algorithm for searching Songs and Tags). </p>
+                    <p>&copy; 2017 All rights reserved. </p>
+                </div>
+            </div>
+
+        </div>
+
+
+        <script>
+
+            // get the modal
+            var modal = document.getElementById("aboutModal");
+
+            // get the button that opens the modal
+            var btn = document.getElementById("about");
+
+            // get the <span> element that cloases the modal;
+            var span = document.getElementsByClassName("close")[0];
+
+            // When the user clicks the button, open the modal
+            btn.onclick = function () {
+                modal.style.display = "block";
+            }
+
+            // When the user clicks on <span> (x), close the modal
+            span.onclick = function () {
+                modal.style.display = "none";
+            }
+
+            // When the user clicks anywhere outside of the modal, close it
+            window.onclick = function (event) {
+                if(event.target == modal){
+                    modal.style.display = "none";
+                }
+            }
+
+        </script>
+
+
+<script>
+
+    // search box event.
+
+    $("input.form-control").click(function () {
+
+        $(this).focus();
+    });
+
+    $(".btn.btn-default").click(function () {
+
+        var inputs = document.getElementsByClassName("form-control");
+
+        var query = [];
+        for(var i =0; i<inputs.length; i++){
+            query.push(inputs[i].value)
+        }
+
+        console.log(query);
+
+
+        $.ajax({
+            url: 'http://localhost:7777/songParser',
+            dataType: 'json',
+            type: 'POST',
+            data: {'msg': query},
+            success: function (result) {
+                console.log("result: " + result.msg);
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                alert("Status: " + textStatus); alert("Error: " + errorThrown);
+            }
+
+        });
+
+    });
+
+
+</script>
+
+
+
+
+
+
+</body>
+</html>

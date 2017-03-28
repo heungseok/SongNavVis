@@ -68,7 +68,8 @@ app.post('/songParser', function (req, res) {
 
         console.log('finished, results: %j', results);
 
-        res.send({result:true, msg: results});
+        // send the result as json
+        res.send({result:true, msg: JSON.parse(results[0])});
 
     });
 

@@ -131,6 +131,56 @@
         border: 1px solid transparent;
         color: #ddd;
     }
+    /*     end of modal      */
+
+    /*     Sidebar Nav      */
+    .sidenav.left, .sidenav.right {
+        /*height: 50%;*/
+        width: 0px;
+        position: fixed;
+        z-index: 50;
+        top: 5%;
+        background-color: #111;
+        overflow-x: hidden;
+        transition: 0.5s;
+        padding-top: 60px;
+        padding-bottom: 60px;
+        opacity: 0.7;
+    }
+    .sidenav.left {
+        left: 0;
+    }
+    .sidenav.right {
+        right: 0;
+        height: 100%;
+    }
+
+    .sidenav a {
+        padding: 8px 8px 8px 32px;
+        text-decoration: none;
+        font-size: 15px;
+        color: #818181;
+        display: block;
+        transition: 0.3s
+    }
+
+    .sidenav a:hover, .offcanvas a:focus{
+        color: #f1f1f1;
+    }
+
+    .sidenav .closebtn {
+        position: absolute;
+        top: 0;
+        right: 25px;
+        font-size: 36px;
+        margin-left: 50px;
+    }
+    @media screen and (max-height: 450px) {
+        .sidenav {padding-top: 15px;}
+        .sidenav a {font-size: 18px;}
+    }
+
+    /*     end of Sidebar Nav      */
 
 
 
@@ -145,11 +195,12 @@
         <script src="lib/CanvasRenderer.js"></script>
         <script src="lib/Detector.js"></script>
         <script src="lib/TrackballControls.js"></script>
+        <script src="lib/OrbitControls.js"></script>
 
         <script src="lib/stats.min.js"></script>
 
         <script src="lib/Tween.js"></script>
-        <script src="lib/TweenMax.js"></script>
+
         <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.3.5/Tween.min.js"></script>-->
 
         <script type="x-shader/x-vertex" id="vertexshader">
@@ -215,7 +266,7 @@
                             <div class="form-group">
                                 <input type="text" class="form-control" placeholder="Song or Tag" name="query2">
                             </div>
-                            <button type="button" class="btn btn-default">Submit</button>
+                            <button type="button" class="btn submit">Submit</button>
 
                         </form>
 
@@ -234,394 +285,31 @@
                         </li>
                     </ul>
 
-
-
                     <ul class="nav navbar-nav navbar-right">
                         <li id="about" class="active"><a href="#">About</a></li>
-
                     </ul>
 
                 </div><!-- /.navbar-collapse -->
             </div>
 
-
         </nav>
+
+        <div id="sideNavLeft" class="sidenav left">
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+
+        </div>
+
+        <div id="sideNavRight" class="sidenav right">
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+
+        </div>
 
 
 
         <div id="container" style="width:100%; height:100%; ">
-        <script>
+            <script src="js/bundle.js"></script>
 
-            if (!Detector.webgl) Detector.addGetWebGLMessage();
-
-            var container, stats;
-            var camera, scene, renderer, controls;
-            var points, colors = []
-            var sprite, indices = [], sizes = [];
-
-            var renderer, scene, camera, stats;
-
-            var uniforms, PARTICLE_SIZE = 10000;
-            var raycaster, intersects;
-            var mouse, INTERSECTED;
-            var cameraToOrigin = false, cameraToTarget = false;
-            var cameraAdjust = false;
-
-
-            var targetPosition = {
-                x: 0,
-                y: 0,
-                z: 0
-            };
-
-            init();
-            animate();
-
-            function init() {
-
-                container = document.getElementById( 'container' );
-
-                // perspectiveCamera(fov: Camera frustum vertical field of view,
-                //                   aspect: Camera frustum aspect ratio
-                //                   near: Camera frustum near plane. (얼마나 가까이갈수있는지 == 깊게 들어가는지)
-                //                   far: Camera frustum far plane. (얼마나 멀리 당겨질수있는가)
-                //        camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 0.1, 200000 );
-                //        camera.position.z = 2750;
-
-                camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 20000 );
-                camera.position.z = 500;
-
-
-                posX = camera.position.x - 100;
-                posY = camera.position.y - 100;
-                posZ = camera.position.z - 100;
-
-
-                controls = new THREE.TrackballControls(camera);
-                controls.rotateSpeed = 1.0;
-                controls.zoomSpeed = 1.2;
-                controls.panSpeed = 0.5;
-
-//                controls.noZoom = false;
-                controls.noPan = false;
-
-
-                // static moving => camera Accelerator; dynamicDampingFactor 0.9:slow, 0.1: fast
-                controls.staticMoving = false;
-                controls.dynamicDampingFactor = 0.2;
-
-                controls.keys = [ 65, 83, 68 ];
-
-                controls.addEventListener( 'change', render );
-
-
-                scene = new THREE.Scene();
-                scene.fog = new THREE.Fog( 0x050505, 1000, 50000 );
-                scene.add( new THREE.AmbientLight( 0x444444 ) );
-
-
-                var light1 = new THREE.DirectionalLight( 0xffffff, 1 );
-                light1.position.set( 1, 1, 1 );
-                scene.add( light1 );
-
-//                sprite = new THREE.TextureLoader().load("img/ball.png");
-                sprite = new THREE.TextureLoader().load("img/sprite.png");
-                geometry = new THREE.Geometry();
-
-
-
-                for( var i=0; i<PARTICLE_SIZE; i++){
-
-                    var vertex = new THREE.Vector3();
-                    vertex.x = 2000* Math.random() - 1000;
-                    vertex.y = 2000* Math.random() - 1000;
-                    vertex.z = 2000* Math.random() - 1000;
-
-                    geometry.vertices.push(vertex);
-
-                    colors[i] = new THREE.Color( 0xffffff );
-                    colors[i].setHSL( (vertex.x + 1000) / 2000,10, 0.5);
-
-                    indices[i] = "Heungseok Park";
-
-
-                }
-                geometry.colors = colors;
-                geometry.indices = indices;
-                console.log(geometry);
-
-                material = new THREE.PointsMaterial( {
-                    size: 50,
-                    map: sprite,
-                    vertexColors: THREE.VertexColors,
-                    alphaTest: 0.5,
-                    transparent: true
-                });
-                material.color.setHSL (1.0, 0.2, 12);
-
-                points = new THREE.Points(geometry, material);
-                scene.add(points);
-
-                // why do this..?
-                geometry.computeBoundingSphere();
-
-                renderer = new THREE.WebGLRenderer( { antialias: false } );
-                renderer.setPixelRatio( window.devicePixelRatio );
-                renderer.setSize( window.innerWidth, window.innerHeight );
-                container.appendChild( renderer.domElement );
-
-
-                raycaster = new THREE.Raycaster();
-                mouse = new THREE.Vector2();
-
-
-
-
-                //        stats = new Stats();
-                //        container.appendChild( stats.dom );
-
-                window.addEventListener( 'resize', onWindowResize, false );
-                document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-                document.addEventListener( 'click', onDocumentMouseClick, false)
-
-            }
-
-            function createSearchBox(){
-                searchBox = document.createElement('input');
-                searchBox.className = "form-control";
-                searchBox.style.position = "absolute";
-                searchBox.style.width = "100px"
-                searchBox.style.top = "5%";
-                searchBox.style.left = "5%";
-
-                searchBox.setAttribute("type", "text");
-
-                container.appendChild(searchBox);
-            }
-
-            function onDocumentMouseMove( event ) {
-
-                event.preventDefault();
-
-                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-//                onDocumentMouseDown(event);
-
-            }
-
-
-            function onDocumentMouseClick(event) {
-
-                event.preventDefault();
-
-                var geometry = points.geometry;
-                var attributes = geometry;
-
-                mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-                mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-
-                raycaster.setFromCamera( mouse, camera );
-
-                intersects = raycaster.intersectObject( points );
-                if ( intersects.length > 0 ) {
-
-
-                    INTERSECTED = intersects[ 0 ].index;
-                    console.log(attributes.vertices[ INTERSECTED ]);
-                    console.log(attributes.indices[ INTERSECTED ]);
-
-                    var to = attributes.vertices[ INTERSECTED ]
-
-
-                    targetPosition.x = Math.round(to.x);
-                    targetPosition.y = Math.round(to.y);
-                    targetPosition.z = Math.round(to.z);
-
-                    cameraToOrigin = true;
-
-//                    flyToOrigin();
-                    flyToTarget()
-
-                    var sphere_geometry = new THREE.SphereGeometry(30, 32, 32);
-                    var sphere_material = new THREE.MeshNormalMaterial();
-                    sphere = new THREE.Mesh( sphere_geometry, sphere_material);
-
-                    sphere.position.set(to.x,to.y,to.z);
-                    scene.add(sphere);
-
-
-                }
-            }
-
-
-
-            function onWindowResize() {
-
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-
-                renderer.setSize( window.innerWidth, window.innerHeight );
-
-                controls.handleResize();
-
-
-            }
-
-            function animate() {
-
-                console.log(camera.zoom);
-                requestAnimationFrame( animate );
-                TWEEN.update();
-
-                controls.update();
-                render();
-
-
-            }
-
-            function render() {
-
-
-                // rotate points entirely
-//                var time = Date.now() * 0.001;
-
-//                points.rotation.x = time * 0.25;
-//                points.rotation.y = time * 0.5;
-
-                renderer.render( scene, camera );
-/*
-                if(cameraAdjust){
-                    console.log("adjusting camera!")
-                    cameraAdjustFunc();
-                }
-*/
-            }
-
-            function cameraAdjustFunc() {
-
-                var zoom = {
-                    value: camera.zoom  // from current zoom
-                };
-                console.log(camera.zoom);
-
-                var zoomEnd = {
-                    value: 0.1 // to the zoom of 1
-                };
-
-                var tween = new TWEEN.Tween(zoom).to(zoomEnd, 500); // duration of tweening is 0.5 second
-                tween.onUpdate(function () {
-                    camera.zoom = zoom.value;
-                })
-                .onComplete(function () {
-                    cameraAdjust = false;
-                })
-                .start();
-
-
-            }
-
-            function flyToOrigin(){
-
-                var from = {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z
-                };
-
-                var to = {
-                    x: 0,
-                    y: 0,
-                    z: 2000
-                };
-
-
-                var tween = new TWEEN.Tween(from)
-                    .to(to, 600)
-                    .easing(TWEEN.Easing.Linear.None)
-                    .onUpdate(function () {
-                        camera.position.set(this.x, this.y, this.z);
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                    })
-                    .onComplete(function () {
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                        flyToTarget();
-                        console.log(camera.position);
-                    })
-                    .start();
-
-            }
-
-            function flyToTarget(){
-
-                var from = {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z
-                };
-
-                var to = {
-                    x: targetPosition.x,
-                    y: targetPosition.y,
-                    z: targetPosition.z
-                };
-                var tween = new TWEEN.Tween(from)
-                    .to(to, 600)
-                    .easing(TWEEN.Easing.Linear.None)
-                    .onUpdate(function () {
-                        camera.position.set(this.x, this.y, this.z);
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                    })
-                    .onComplete(function () {
-                        cameraAdjust = true;
-                        camera.lookAt(new THREE.Vector3(0, 0, 0));
-                        console.log(camera.position);
-
-                    })
-                    .start();
-
-            }
-            
-            function flyTo(camera, to, radius) {
-                var cameraOffset = radius / Math.tan(Math.PI / 180.0 * camera.fov * 0.5);
-
-                var from = {
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z
-                };
-
-                camera.lookAt(new THREE.Vector3(to.x, to.y, to.z));
-                var cameraEndPos = intersect(from, to, cameraOffset);
-                camera.position.x = cameraEndPos.x;
-                camera.position.y = cameraEndPos.y;
-                camera.position.z = cameraEndPos.z;
-                
-            }
-
-            function intersect(from, to, r) {
-                // we are using Cartesian to Spherical coordinates transformation to find
-                // theta and phi:
-                // https://en.wikipedia.org/wiki/Spherical_coordinate_system#Coordinate_system_conversions
-                var dx = from.x - to.x;
-                var dy = from.y - to.y;
-                var dz = from.z - to.z;
-                var r1 = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                var teta = Math.acos(dz / r1);
-                var phi = Math.atan2(dy, dx);
-
-                // And then based on sphere radius we transform back to Cartesian:
-                return {
-                    x: r * Math.sin(teta) * Math.cos(phi) + to.x,
-                    y: r * Math.sin(teta) * Math.sin(phi) + to.y,
-                    z: r * Math.cos(teta) + to.z
-                };
-            }
-
-
-
-        </script>
-
-    </div>
+        </div>
 
 
         <!-- Modals -->
@@ -696,52 +384,19 @@
                 }
             }
 
-        </script>
 
+            function closeNavLeft() {
+                document.getElementById("closeNavLeft").style.width = "0";
 
-<script>
-
-    // search box event.
-
-    $("input.form-control").click(function () {
-
-        $(this).focus();
-    });
-
-    $(".btn.btn-default").click(function () {
-
-        var inputs = document.getElementsByClassName("form-control");
-
-        var query = [];
-        for(var i =0; i<inputs.length; i++){
-            query.push(inputs[i].value)
-        }
-
-        console.log(query);
-
-
-        $.ajax({
-            url: 'http://localhost:7777/songParser',
-            dataType: 'json',
-            type: 'POST',
-            data: {'msg': query},
-            success: function (result) {
-                console.log("result: " + result.msg);
-            },
-            error: function (XMLHttpRequest, textStatus, errorThrown) {
-                alert("Status: " + textStatus); alert("Error: " + errorThrown);
             }
 
-        });
+            function closeNavRight() {
+                document.getElementById("closeNavRight").style.width = "0";
 
-    });
-
-
-</script>
+            }
 
 
-
-
+        </script>
 
 
 </body>
